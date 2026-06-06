@@ -10,7 +10,7 @@ import java.util.List;
 
 @FeignClient(
         name = "notification-service",
-        url = "${NOTIFICATION_SERVICE_URL:}"
+        url = "${notification.service.url:${NOTIFICATION_SERVICE_URL:}}"
 )
 public interface NotificationClient {
 
