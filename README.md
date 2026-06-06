@@ -69,6 +69,13 @@ The service starts on `http://localhost:8081`.
 | --- | --- |
 | `MONGODB_URI` | `mongodb://localhost:27017/event_db` |
 | `EUREKA_URL` | `http://localhost:8761/eureka/` |
+| `CONFIG_SERVER_IMPORT` | `optional:configserver:http://localhost:8099` |
+| `CONFIG_SERVER_FAIL_FAST` | `false` |
+
+In the team stack, Config Server centrally provides the service port, MongoDB
+URI, Eureka URL, notification-service endpoint, actuator, and Swagger settings.
+Compose uses a required `configserver:http://config-server:8099` import so the
+service cannot silently start with missing team configuration.
 | `NOTIFICATION_SERVICE_URL` | Empty; resolve through Eureka |
 | `CONFIG_SERVER_URL` | `http://localhost:8099` |
 
