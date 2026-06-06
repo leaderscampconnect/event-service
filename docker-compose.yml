@@ -1,0 +1,13 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: event-service-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - event_mongodb_data:/data/db
+
+volumes:
+  event_mongodb_data:
+

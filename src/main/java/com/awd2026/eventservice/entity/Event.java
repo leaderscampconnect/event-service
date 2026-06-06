@@ -1,18 +1,15 @@
 package com.awd2026.eventservice.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 
-@Entity
+@Document(collection = "events")
 public class Event {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     private String title;
     private LocalDate date;
@@ -21,18 +18,18 @@ public class Event {
     public Event() {
     }
 
-    public Event(Long id, String title, LocalDate date, String location) {
+    public Event(String id, String title, LocalDate date, String location) {
         this.id = id;
         this.title = title;
         this.date = date;
         this.location = location;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -60,4 +57,3 @@ public class Event {
         this.location = location;
     }
 }
-
