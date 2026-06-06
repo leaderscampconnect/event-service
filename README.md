@@ -1,42 +1,63 @@
 # Event Service
 
-Spring Boot microservice for managing events in the Camp Connect project.
+Advanced event management microservice for Camp Connect.
 
-## Features
+## Domain features
 
-- Create, read, update, and delete events
-- MongoDB persistence with Spring Data MongoDB
-- Eureka service discovery
-- OpenFeign communication with `notification-service`
+- MongoDB-backed event CRUD
+- Draft, scheduled, postponed, ongoing, completed, and cancelled lifecycle
+- Publication controls and guarded status transitions
+- Capacity management and computed occupancy
+- Confirmed registrations and ordered waitlists
+- Automatic waitlist promotion after cancellation
+- Event cancellation and postponement scenarios
+- Search, filtering, upcoming events, and availability
+- Synchronous notification creation through OpenFeign
 
-## Requirements
-
-- Java 17
-- Maven
-- Docker Desktop or MongoDB
-- Eureka server running on port `8761`
-
-## Run MongoDB
-
-Using Docker Compose:
+## Run
 
 ```bash
 docker compose up -d mongodb
-```
-
-The default connection is `mongodb://localhost:27017/event_db`. To use
-MongoDB Atlas or another server, set `MONGODB_URI`.
-
-## Run the service
-
-```bash
 mvn spring-boot:run
 ```
 
 The service starts on `http://localhost:8081`.
 
-MongoDB generates string IDs for new events. Use the `id` returned by the
-create endpoint for subsequent GET, PUT, and DELETE requests.
+## Event payload
+
+```json
+{
+  "title": "Forest Discovery Camp",
+  "description": "A guided weekend camping experience in the forest.",
+  "category": "ADVENTURE",
+  "startAt": "2026-07-10T09:00:00",
+  "endAt": "2026-07-12T18:00:00",
+  "location": "Ain Draham",
+  "organizerId": "guide-42",
+  "capacity": 2,
+  "waitlistCapacity": 3,
+  "price": 120.0,
+  "published": true
+}
+```
+
+## Main endpoints
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/events` | Create an event |
+| `GET` | `/events` | Filter by category, status, location, or published |
+| `GET` | `/events/search?keyword=forest` | Search event text |
+| `GET` | `/events/upcoming` | List upcoming published events |
+| `GET` | `/events/available` | List events accepting registrations |
+| `PUT` | `/events/{id}` | Update editable event |
+| `PATCH` | `/events/{id}/publish` | Publish a draft |
+| `POST` | `/events/{id}/registrations` | Register or join waitlist |
+| `DELETE` | `/events/{id}/registrations/{participantId}` | Cancel registration |
+| `PATCH` | `/events/{id}/postpone` | Move event dates |
+| `PATCH` | `/events/{id}/cancel` | Cancel event with reason |
+| `PATCH` | `/events/{id}/status?status=ONGOING` | Apply lifecycle transition |
+| `GET` | `/events/{id}/availability` | Capacity and occupancy metrics |
 
 ## Configuration
 
@@ -44,4 +65,4 @@ create endpoint for subsequent GET, PUT, and DELETE requests.
 | --- | --- |
 | `MONGODB_URI` | `mongodb://localhost:27017/event_db` |
 | `EUREKA_URL` | `http://localhost:8761/eureka/` |
-
+| `NOTIFICATION_SERVICE_URL` | Empty; resolve through Eureka |
