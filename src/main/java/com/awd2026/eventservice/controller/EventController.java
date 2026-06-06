@@ -11,6 +11,8 @@ import com.awd2026.eventservice.dto.RegistrationResponse;
 import com.awd2026.eventservice.entity.EventCategory;
 import com.awd2026.eventservice.entity.EventStatus;
 import com.awd2026.eventservice.service.EventService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/events")
+@Tag(name = "Events", description = "Event lifecycle, registration, and availability")
 public class EventController {
 
     private final EventService eventService;
@@ -40,6 +43,7 @@ public class EventController {
     }
 
     @GetMapping
+    @Operation(summary = "List and filter events")
     public List<EventResponse> getEvents(
             @RequestParam(required = false) EventCategory category,
             @RequestParam(required = false) EventStatus status,
@@ -50,16 +54,19 @@ public class EventController {
     }
 
     @GetMapping("/search")
+    @Operation(summary = "Search events by title, description, or location")
     public List<EventResponse> searchEvents(@RequestParam String keyword) {
         return eventService.searchEvents(keyword);
     }
 
     @GetMapping("/upcoming")
+    @Operation(summary = "List upcoming published events")
     public List<EventResponse> getUpcomingEvents() {
         return eventService.getUpcomingEvents();
     }
 
     @GetMapping("/available")
+    @Operation(summary = "List events accepting registrations or waitlist entries")
     public List<EventResponse> getAvailableEvents() {
         return eventService.getAvailableEvents();
     }
@@ -78,6 +85,7 @@ public class EventController {
     }
 
     @PostMapping
+    @Operation(summary = "Create an event")
     public ResponseEntity<EventResponse> createEvent(
             @Valid @RequestBody EventRequest request
     ) {
@@ -86,6 +94,7 @@ public class EventController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Update an editable event")
     public EventResponse updateEvent(
             @PathVariable String id,
             @Valid @RequestBody EventRequest request
@@ -110,6 +119,7 @@ public class EventController {
     }
 
     @PostMapping("/{id}/registrations")
+    @Operation(summary = "Register a participant or add them to the waitlist")
     public RegistrationResponse registerParticipant(
             @PathVariable String id,
             @Valid @RequestBody RegistrationRequest request
@@ -126,6 +136,7 @@ public class EventController {
     }
 
     @PatchMapping("/{id}/postpone")
+    @Operation(summary = "Postpone an event and notify participants")
     public EventResponse postponeEvent(
             @PathVariable String id,
             @Valid @RequestBody PostponeEventRequest request
@@ -134,6 +145,7 @@ public class EventController {
     }
 
     @PatchMapping("/{id}/cancel")
+    @Operation(summary = "Cancel an event and notify participants")
     public EventResponse cancelEvent(
             @PathVariable String id,
             @Valid @RequestBody CancelEventRequest request

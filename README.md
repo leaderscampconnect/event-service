@@ -23,6 +23,10 @@ mvn spring-boot:run
 
 The service starts on `http://localhost:8081`.
 
+- Swagger UI: `http://localhost:8081/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8081/v3/api-docs`
+- Health: `http://localhost:8081/actuator/health`
+
 ## Event payload
 
 ```json
@@ -66,3 +70,19 @@ The service starts on `http://localhost:8081`.
 | `MONGODB_URI` | `mongodb://localhost:27017/event_db` |
 | `EUREKA_URL` | `http://localhost:8761/eureka/` |
 | `NOTIFICATION_SERVICE_URL` | Empty; resolve through Eureka |
+| `CONFIG_SERVER_URL` | `http://localhost:8099` |
+
+Validation and business failures use a consistent response:
+
+```json
+{
+  "timestamp": "2026-06-06T14:00:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Request validation failed",
+  "path": "/events",
+  "validationErrors": {
+    "title": "must not be blank"
+  }
+}
+```
