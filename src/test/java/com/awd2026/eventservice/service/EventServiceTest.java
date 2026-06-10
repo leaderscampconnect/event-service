@@ -1,6 +1,7 @@
 package com.awd2026.eventservice.service;
 
 import com.awd2026.eventservice.client.NotificationClient;
+import com.awd2026.eventservice.client.UserClient;
 import com.awd2026.eventservice.dto.CancelEventRequest;
 import com.awd2026.eventservice.dto.EventRequest;
 import com.awd2026.eventservice.dto.EventResponse;
@@ -10,6 +11,7 @@ import com.awd2026.eventservice.entity.Event;
 import com.awd2026.eventservice.entity.EventCategory;
 import com.awd2026.eventservice.entity.EventStatus;
 import com.awd2026.eventservice.repository.EventRepository;
+import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,13 +43,18 @@ class EventServiceTest {
     @Mock
     private NotificationClient notificationClient;
 
+    @Mock
+    private UserClient userClient;
+
     private EventService eventService;
 
     @BeforeEach
     void setUp() {
-        eventService = new EventService(eventRepository, notificationClient);
+        eventService = new EventService(eventRepository, notificationClient, userClient);
         lenient().when(eventRepository.save(any(Event.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(userClient.getUser(any(Long.class)))
+                .thenAnswer(invocation -> user(invocation.getArgument(0)));
     }
 
     @Test
@@ -85,25 +93,57 @@ class EventServiceTest {
         when(eventRepository.findById("event-1")).thenReturn(Optional.of(event));
 
         RegistrationResponse response =
-                eventService.registerParticipant("event-1", "camper-1");
+                eventService.registerParticipant("event-1", "1");
 
         assertEquals(RegistrationResponse.RegistrationStatus.CONFIRMED,
                 response.registrationStatus());
-        assertTrue(event.getParticipantIds().contains("camper-1"));
+        assertTrue(event.getParticipantIds().contains("1"));
+        verify(userClient).getUser(1L);
     }
 
     @Test
     void waitlistsParticipantWhenEventIsFull() {
         Event event = event(1, 1);
-        event.getParticipantIds().add("camper-1");
+        event.getParticipantIds().add("1");
         when(eventRepository.findById("event-1")).thenReturn(Optional.of(event));
 
         RegistrationResponse response =
-                eventService.registerParticipant("event-1", "camper-2");
+                eventService.registerParticipant("event-1", "2");
 
         assertEquals(RegistrationResponse.RegistrationStatus.WAITLISTED,
                 response.registrationStatus());
         assertEquals(1, response.waitlistPosition());
+        verify(userClient).getUser(2L);
+    }
+
+    @Test
+    void rejectsRegistrationWhenParticipantIdIsNotAUserServiceId() {
+        Event event = event(1, 1);
+        when(eventRepository.findById("event-1")).thenReturn(Optional.of(event));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> eventService.registerParticipant("event-1", "keycloak-subject")
+        );
+
+        assertEquals(400, exception.getStatusCode().value());
+    }
+
+    @Test
+    void rejectsRegistrationWhenTeammateUserDoesNotExist() {
+        Event event = event(1, 1);
+        when(eventRepository.findById("event-1")).thenReturn(Optional.of(event));
+        FeignException feignException = mock(FeignException.class);
+        when(feignException.status()).thenReturn(404);
+        when(userClient.getUser(999L)).thenThrow(feignException);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> eventService.registerParticipant("event-1", "999")
+        );
+
+        assertEquals(404, exception.getStatusCode().value());
+        assertTrue(event.getParticipantIds().isEmpty());
     }
 
     @Test
@@ -199,5 +239,16 @@ class EventServiceTest {
         event.setParticipantIds(new LinkedHashSet<>());
         event.setWaitlistParticipantIds(new LinkedHashSet<>());
         return event;
+    }
+
+    private UserClient.UserResponse user(Long id) {
+        return new UserClient.UserResponse(
+                id,
+                "Camper",
+                "Demo",
+                "camper" + id + "@campconnect.test",
+                "12345678",
+                "CAMPER"
+        );
     }
 }

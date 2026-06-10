@@ -13,6 +13,7 @@ Advanced event management microservice for Camp Connect.
 - Event cancellation and postponement scenarios
 - Search, filtering, upcoming events, and availability
 - Synchronous notification creation through OpenFeign
+- Cross-team participant validation through OpenFeign to `user-service`
 
 ## Run
 
@@ -71,6 +72,7 @@ The service starts on `http://localhost:8081`.
 | `EUREKA_URL` | `http://localhost:8761/eureka/` |
 | `CONFIG_SERVER_IMPORT` | `optional:configserver:http://localhost:8099` |
 | `CONFIG_SERVER_FAIL_FAST` | `false` |
+| `USER_SERVICE_URL` | Empty; resolve `user-service` through Eureka |
 
 In the team stack, Config Server centrally provides the service port, MongoDB
 URI, Eureka URL, notification-service endpoint, actuator, and Swagger settings.

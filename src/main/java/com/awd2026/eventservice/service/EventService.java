@@ -1,6 +1,7 @@
 package com.awd2026.eventservice.service;
 
 import com.awd2026.eventservice.client.NotificationClient;
+import com.awd2026.eventservice.client.UserClient;
 import com.awd2026.eventservice.dto.CancelEventRequest;
 import com.awd2026.eventservice.dto.EventAvailabilityResponse;
 import com.awd2026.eventservice.dto.EventRequest;
@@ -11,6 +12,7 @@ import com.awd2026.eventservice.entity.Event;
 import com.awd2026.eventservice.entity.EventCategory;
 import com.awd2026.eventservice.entity.EventStatus;
 import com.awd2026.eventservice.repository.EventRepository;
+import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
@@ -29,10 +31,16 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final NotificationClient notificationClient;
+    private final UserClient userClient;
 
-    public EventService(EventRepository eventRepository, NotificationClient notificationClient) {
+    public EventService(
+            EventRepository eventRepository,
+            NotificationClient notificationClient,
+            UserClient userClient
+    ) {
         this.eventRepository = eventRepository;
         this.notificationClient = notificationClient;
+        this.userClient = userClient;
     }
 
     public List<EventResponse> findEvents(
@@ -165,6 +173,7 @@ public class EventService {
         Event event = getEventEntity(id);
         String normalizedParticipantId = participantId.trim();
         ensureRegistrationOpen(event);
+        UserClient.UserResponse participant = validateParticipant(normalizedParticipantId);
 
         if (event.getParticipantIds().contains(normalizedParticipantId)
                 || event.getWaitlistParticipantIds().contains(normalizedParticipantId)) {
@@ -182,14 +191,16 @@ public class EventService {
             registrationStatus = RegistrationResponse.RegistrationStatus.CONFIRMED;
             notificationType = "REGISTRATION_CONFIRMED";
             notificationTitle = "Registration confirmed";
-            notificationMessage = "Your registration for " + event.getTitle() + " is confirmed.";
+            notificationMessage = participant.firstName()
+                    + ", your registration for " + event.getTitle() + " is confirmed.";
         } else if (event.getWaitlistParticipantIds().size() < event.getWaitlistCapacity()) {
             event.getWaitlistParticipantIds().add(normalizedParticipantId);
             registrationStatus = RegistrationResponse.RegistrationStatus.WAITLISTED;
             waitlistPosition = event.getWaitlistParticipantIds().size();
             notificationType = "WAITLIST_JOINED";
             notificationTitle = "Added to waitlist";
-            notificationMessage = "You joined the waitlist for " + event.getTitle() + ".";
+            notificationMessage = participant.firstName()
+                    + ", you joined the waitlist for " + event.getTitle() + ".";
         } else {
             throw conflict("Event and waitlist are full");
         }
@@ -371,6 +382,37 @@ public class EventService {
         }
         if (event.getStartAt() == null || !event.getStartAt().isAfter(LocalDateTime.now())) {
             throw conflict("Registration is closed after the event start time");
+        }
+    }
+
+    private UserClient.UserResponse validateParticipant(String participantId) {
+        final long userId;
+        try {
+            userId = Long.parseLong(participantId);
+        } catch (NumberFormatException exception) {
+            throw badRequest("Participant ID must be a numeric user-service identifier");
+        }
+
+        try {
+            UserClient.UserResponse participant = userClient.getUser(userId);
+            if (participant == null || participant.id() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "User service returned an invalid participant response"
+                );
+            }
+            return participant;
+        } catch (FeignException exception) {
+            if (exception.status() == HttpStatus.NOT_FOUND.value()) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Participant user not found with id: " + participantId
+                );
+            }
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "User service is unavailable; registration cannot be validated"
+            );
         }
     }
 
